@@ -48,8 +48,17 @@ def test_detects_value_mismatch():
 def test_normalized_dirty_references_are_matched():
     results = reconcile_records(
         [{'record_id': 'REC-1034', 'total_value_raw': '84939.99', 'location_id': 'LOC-101'}],
-        [{'entry_id': 'E1', 'record_ref': ' rec_1034 ', 'value_raw': '84939.99', 'location_id': 'LOC-101'}],
+        [{'entry_id': 'E1', 'record_ref_raw': ' rec_1034 ', 'value_raw': '84939.99', 'location_id': 'LOC-101'}],
         {'LOC-101': 'ORG-A'},
+    )
+    assert results == []
+
+
+def test_uses_record_ref_raw_from_db_rows():
+    results = reconcile_records(
+        [{'record_id': 'REC-01', 'total_value_raw': '100', 'location_id': 'LOC-1'}],
+        [{'entry_id': 'E1', 'record_ref_raw': 'REC-01', 'value_raw': '100', 'location_id': 'LOC-1'}],
+        {'LOC-1': 'ORG-1'},
     )
     assert results == []
 

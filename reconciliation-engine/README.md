@@ -79,6 +79,8 @@ macOS/Linux:
 
 ```bash
 source .venv/bin/activate
+or 
+.\.venv\Scripts\Activate.ps1
 ```
 
 Install dependencies:
@@ -91,12 +93,14 @@ Create/update the database:
 
 ```bash
 python manage.py migrate
+
 ```
 
 Import the three exports:
 
 ```bash
-python manage.py import_data
+
+python manage.py import_data --data-dir ../data
 ```
 
 Start Django:

@@ -34,5 +34,5 @@ USE_I18N = True
 USE_TZ = True
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Keep this assessment intentionally auth-free, per the brief.
+# this assessment intentionally auth-free, per the brief.
 APPEND_SLASH = True
