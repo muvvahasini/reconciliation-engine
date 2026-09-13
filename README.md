@@ -220,3 +220,17 @@ This means a row from one tenant cannot satisfy a record from another tenant, ev
 ## Summary
 
 This repository currently contains a working reconciliation engine with validated backend logic, tenant-aware API responses, and a matching frontend dashboard. The project is ready for local review and manual run, with the backend logic already verified by test execution.
+
+## Reflection questions
+
+### a. Name one thing the AI agent got wrong. How did you notice?
+
+One thing the AI agent got wrong was assuming the System B reference key could be matched using the plain `record_ref` field without accounting for the preserved raw value. I noticed this when the comparison logic started classifying almost every record as `MISSING_IN_SYSTEM_B`, even though the data clearly included matching references; tracing the match key showed the code was looking at the wrong field. The fix was to use `record_ref_raw` when present, which restored the correct matching behavior.
+
+### b. Which part of your submission are you least confident about, and why?
+
+The part I am least confident about is the production-readiness of the tenant boundary model. The current implementation enforces tenant isolation correctly in the API and comparison logic, but it still relies on query parameters rather than authenticated tenant context, so it is best seen as a secure demo boundary rather than a full authorization model.
+
+### c. If you had a second day, what would you fix first?
+
+If I had a second day, I would first replace the query-parameter tenant selector with authenticated tenant context and server-side authorization, then add a proper immutable reconciliation snapshot/export path so audit histories are preserved instead of being reconstructed on the fly.
