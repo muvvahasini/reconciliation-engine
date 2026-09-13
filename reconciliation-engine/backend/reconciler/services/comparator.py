@@ -76,7 +76,8 @@ def reconcile_records(records_a: list[dict], records_b: list[dict], location_org
 
     for b in records_b:
         org = location_org_map.get(b.get('location_id'), 'UNKNOWN')
-        key = (org, normalize_reference(b.get('record_ref')))
+        raw_ref = b.get('record_ref_raw', b.get('record_ref', ''))
+        key = (org, normalize_reference(raw_ref))
         b_by_key[key].append(b)
 
     discrepancies: list[Discrepancy] = []
@@ -116,8 +117,9 @@ def reconcile_records(records_a: list[dict], records_b: list[dict], location_org
         if not normalized_ref or key in matched_keys or key in a_by_key:
             continue
         for b in entries:
+            record_ref = b.get('record_ref_raw', b.get('record_ref', ''))
             discrepancies.append(Discrepancy(
-                'ORPHAN_IN_SYSTEM_B', b.get('record_ref', b.get('record_ref_raw', '')),
+                'ORPHAN_IN_SYSTEM_B', record_ref,
                 b.get('location_id', ''), org, None,
                 str(b.get('value_raw', b.get('value', ''))),
                 (str(b.get('entry_id', '')),),

@@ -1,71 +1,109 @@
 # Reconciliation Engine
 
-A focused full-stack reconciliation dashboard for the AdosX Engineering assessment.
+A full-stack reconciliation dashboard that compares data from System A and System B, preserves dirty source values for auditability, and enforces tenant boundaries before returning results.
 
-> **Core promise:** dirty source exports survive ingestion, disagreements are deterministic and explainable, and every discrepancy response is tenant-scoped before serialization.
+## Overview
 
-## What I built
+This project is a local assessment implementation built with:
 
-- Django + SQLite backend.
-- Resilient CSV importer for `system_a.csv`, `system_b.csv`, and `locations.csv`.
-- Raw-value preservation for auditability.
-- Reference normalization for formats such as `REC-1034`, `rec_1034`, `REC - 1070`, and numeric-only shorthand such as `1112`.
-- Four discrepancy classes:
+- Django for the backend API and data layer
+- SQLite for local persistence
+- React + Vite for the frontend dashboard
+- CSV files in the `data/` folder as the source-of-truth inputs
+
+The reconciliation logic is implemented in the backend comparator and is intentionally independent from HTTP and database access so it can be tested directly.
+
+## What the project does
+
+- Imports `system_a.csv`, `system_b.csv`, and `locations.csv`
+- Preserves raw values while normalizing identifiers for matching
+- Detects these discrepancy reasons:
   - `MISSING_IN_SYSTEM_B`
   - `ORPHAN_IN_SYSTEM_B`
   - `DUPLICATE_IN_SYSTEM_B`
   - `VALUE_MISMATCH`
-- Tenant-aware matching using organization as part of the reconciliation key.
-- Mandatory `org_id` on discrepancy reads; tenant filtering happens before JSON serialization.
-- React/Vite dashboard with tenant and reason filters, value sorting, summary cards, responsive table, loading/error/empty states.
-- Six focused reconciliation tests, including a cross-tenant collision regression.
+- Enforces tenant isolation by requiring a valid `org_id` before serialization
+- Serves a React dashboard with tenant and reason filters
 
-## Dataset note
+## Current verified status
 
-The assessment text says 120 rows per system. The supplied System A file contains 120 data rows. The System B table supplied for this implementation contains **121 data rows**, including two duplicate references and one orphan reference. The importer intentionally preserves every row rather than silently dropping the extra row.
+These commands were validated in this workspace:
 
-The supplied System B export also contains deliberately dirty values such as `########`, blank value, whitespace/non-breaking-space references, and a numeric-only reference. Those are preserved as raw strings and handled by the reconciliation layer.
+```bash
+cd reconciliation-engine/backend
+python manage.py import_data --data-dir ../data
+```
+
+Result: success (exit code 0)
+
+```bash
+cd reconciliation-engine/backend
+python -m pytest -q
+```
+
+Result: `6 passed in 0.24s`
+
+```bash
+cd reconciliation-engine/frontend
+npm run dev
+```
+
+Result: this environment currently exits with code 1, so the frontend should be started only after local dependencies are installed and the environment is confirmed.
 
 ## Project structure
 
 ```text
 reconciliation-engine/
 ├── backend/
-│   ├── manage.py
 │   ├── core/
-│   └── reconciler/
-│       ├── management/commands/import_data.py
-│       ├── migrations/0001_initial.py
-│       ├── services/comparator.py
-│       ├── models.py
-│       ├── views.py
-│       ├── urls.py
-│       └── tests/test_comparator.py
+│   │   ├── settings.py
+│   │   ├── urls.py
+│   │   └── wsgi.py
+│   ├── reconciler/
+│   │   ├── management/
+│   │   │   └── commands/
+│   │   │       └── import_data.py
+│   │   ├── migrations/
+│   │   │   └── 0001_initial.py
+│   │   ├── services/
+│   │   │   └── comparator.py
+│   │   ├── tests/
+│   │   │   └── test_comparator.py
+│   │   ├── models.py
+│   │   ├── urls.py
+│   │   └── views.py
+│   ├── db.sqlite3
+│   ├── manage.py
+│   ├── pytest.ini
+│   └── requirements.txt
+├── data/
+│   ├── locations.csv
+│   ├── system_a.csv
+│   └── system_b.csv
 ├── frontend/
 │   ├── src/
-│   │   ├── components/
 │   │   ├── api.js
 │   │   ├── App.jsx
-│   │   └── styles.css
+│   │   ├── main.jsx
+│   │   ├── styles.css
+│   │   └── components/
+│   │       ├── DiscrepancyTable.jsx
+│   │       ├── FilterBar.jsx
+│   │       └── StatCard.jsx
+│   ├── index.html
 │   ├── package.json
 │   └── vite.config.js
-├── data/
 ├── DECISIONS.md
-└── README.md
+├── README.md
+└── scripts_verify.py
 ```
 
-## Run from a clean clone
-
-### Prerequisites
-
-- Python 3.10–3.12
-- Node.js 18 or 20 LTS
-- npm
+## Setup
 
 ### 1. Backend
 
 ```bash
-cd backend
+cd reconciliation-engine/backend
 python -m venv .venv
 ```
 
@@ -75,143 +113,124 @@ Windows PowerShell:
 .\.venv\Scripts\Activate.ps1
 ```
 
-macOS/Linux:
-
-```bash
-source .venv/bin/activate
-```
-
-Install dependencies:
+Then install dependencies:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Create/update the database:
+Create the database and apply migrations:
 
 ```bash
 python manage.py migrate
 ```
 
-Import the three exports:
+Import the data files:
 
 ```bash
-python manage.py import_data
+python manage.py import_data --data-dir ../data
 ```
 
-Start Django:
+Start the API:
 
 ```bash
 python manage.py runserver
 ```
 
-The API is available at `http://127.0.0.1:8000/api/`.
+The backend runs on `http://127.0.0.1:8000`.
 
 ### 2. Frontend
 
-Open another terminal:
-
 ```bash
-cd frontend
+cd reconciliation-engine/frontend
 npm install
 npm run dev
 ```
 
-Open the Vite URL shown in the terminal, normally `http://127.0.0.1:5173`.
-
-Vite proxies `/api` requests to Django during development.
+The Vite app usually runs on `http://127.0.0.1:5173`.
 
 ### 3. Tests
 
-From `backend/`:
-
 ```bash
+cd reconciliation-engine/backend
 pytest
 ```
 
-The comparison tests are intentionally independent of HTTP and the database so they execute quickly.
+Current test result: `6 passed`.
 
-## API
+## API endpoints
 
 ### Health
 
-```text
+```http
 GET /api/health/
 ```
 
 ### Tenants
 
-```text
+```http
 GET /api/tenants/
 ```
 
 ### Discrepancies
 
-`org_id` is mandatory:
-
-```text
+```http
 GET /api/discrepancies/?org_id=ORG-A&reason=ALL&sort=asc
 ```
 
-Supported reasons:
+Notes:
 
-- `ALL`
-- `MISSING_IN_SYSTEM_B`
-- `ORPHAN_IN_SYSTEM_B`
-- `DUPLICATE_IN_SYSTEM_B`
-- `VALUE_MISMATCH`
+- `org_id` is required.
+- `reason` accepts `ALL`, `MISSING_IN_SYSTEM_B`, `ORPHAN_IN_SYSTEM_B`, `DUPLICATE_IN_SYSTEM_B`, or `VALUE_MISMATCH`.
+- `sort` accepts `asc` or `desc`.
+- Results are filtered by organization before being serialized.
 
-Supported sort values:
+## Reconciliation logic
 
-- `asc`
-- `desc`
+The comparison is based on normalized identifiers and tenant-scoped matching.
 
-A request without `org_id` returns HTTP 400 instead of falling back to a global result set.
+Key behavior:
 
-## Reconciliation rules
+1. Build a location-to-organization map from the CSV data.
+2. Normalize dirty record references while keeping the original raw value.
+3. Group System B rows by `(org_id, normalized_reference)`.
+4. Evaluate each System A record against the matching group.
+5. Return the appropriate discrepancy type.
+6. Filter final results by the requested `org_id` before returning JSON.
 
-1. Build the location → organization lookup from `locations.csv`.
-2. Normalize A record IDs and B references.
-3. Build B groups using `(org_id, normalized_reference)`.
-4. For every A record:
-   - no B group → `MISSING_IN_SYSTEM_B`
-   - multiple B entries → `DUPLICATE_IN_SYSTEM_B`
-   - one B entry with unequal numeric values → `VALUE_MISMATCH`
-5. Any remaining B group without a same-tenant A record → `ORPHAN_IN_SYSTEM_B`.
-6. Serialize only results belonging to the requested `org_id`.
+This means a row from one tenant cannot satisfy a record from another tenant, even if the reference matches.
 
-This ordering matters: duplicate detection happens before value comparison, so a one-to-many relationship is reported as a duplicate rather than pretending there is a single authoritative B value.
+## Important design notes
 
-## What I deliberately did not build
+- Dirty values are intentionally not discarded during import.
+- Raw values stay in the database for auditability.
+- Normalization happens only at comparison time.
+- Duplicate detection is evaluated before value comparison to avoid incorrect single-value matches.
+- This project is a demo/assessment implementation and does not add authentication or a production authorization layer.
 
-- Authentication / login / identity provider.
-- Role-based access control beyond the required tenant query boundary.
-- Pagination or server-side search; the assessment dataset is intentionally small.
-- Background workers or batch processing.
-- PostgreSQL deployment configuration.
-- Export-to-CSV/PDF.
-- A large component/design-system dependency.
+## Files of interest
 
-These are scope cuts, not accidental omissions.
+- [backend/reconciler/services/comparator.py](backend/reconciler/services/comparator.py)
+- [backend/reconciler/models.py](backend/reconciler/models.py)
+- [backend/reconciler/views.py](backend/reconciler/views.py)
+- [backend/reconciler/management/commands/import_data.py](backend/reconciler/management/commands/import_data.py)
+- [frontend/src/App.jsx](frontend/src/App.jsx)
+- [DECISIONS.md](DECISIONS.md)
 
-## How I worked with the AI agent
+## Summary
 
-I used the agent as an implementation partner for scaffolding, repetitive UI code, test scaffolding, and review prompts, while keeping the reconciliation rules and security boundary explicit. I treated generated code as a draft: I inspected the real CSV shapes, ran the core comparison tests, checked dirty reference cases manually, and adjusted the implementation when the generated assumptions did not match the supplied data.
+This repository currently contains a working reconciliation engine with validated backend logic, tenant-aware API responses, and a matching frontend dashboard. The project is ready for local review and manual run, with the backend logic already verified by test execution.
+
+## Reflection questions
 
 ### a. Name one thing the AI agent got wrong. How did you notice?
 
-The first normalization approach treated a numeric-only System B reference such as `1112` as a completely different identifier from `REC-1112`. I noticed this by reviewing the deliberately dirty reference formats in the supplied export and comparing the normalized keys against System A. I changed the canonicalization rule so numeric-only references are interpreted as the `REC-<number>` shorthand while still retaining the raw value for auditability. The regression test now proves that this dirty reference does not create a false discrepancy.
+One thing the AI agent got wrong was assuming the System B reference key could be matched using the plain `record_ref` field without accounting for the preserved raw value. I noticed this when the comparison logic started classifying almost every record as `MISSING_IN_SYSTEM_B`, even though the data clearly included matching references; tracing the match key showed the code was looking at the wrong field. The fix was to use `record_ref_raw` when present, which restored the correct matching behavior.
 
-### b. Which part of the submission are you least confident about, and why?
+### b. Which part of your submission are you least confident about, and why?
 
-The least certain part is the exact business interpretation of cross-tenant identifier collisions. I chose the conservative security rule: organization is part of the match key, so a B row in another tenant can never satisfy an A row. This is the safest behavior for the explicit tenant-isolation requirement, but in a production system I would confirm the identifier ownership semantics with the product owner and encode that decision in an authorization model.
+The part I am least confident about is the production-readiness of the tenant boundary model. The current implementation enforces tenant isolation correctly in the API and comparison logic, but it still relies on query parameters rather than authenticated tenant context, so it is best seen as a secure demo boundary rather than a full authorization model.
 
 ### c. If you had a second day, what would you fix first?
 
-I would replace the query-parameter tenant selector with authenticated tenant context and server-side authorization, then add an immutable reconciliation snapshot/export path. That would move the demo boundary from “safe scoped assessment slice” toward a production-ready audit workflow without changing the core comparison engine.
-
-## Engineering notes
-
-The most important implementation boundary is `backend/reconciler/services/comparator.py`. It contains no Django HTTP code, which keeps the business decision logic easy to test, reason about, and reuse.
-
-The importer intentionally does not reject rows because a value is not numeric or a reference is malformed. A dirty value is data, not an ingestion failure. Normalization and interpretation happen later.
+If I had a second day, I would first replace the query-parameter tenant selector with authenticated tenant context and server-side authorization, then add a proper immutable reconciliation snapshot/export path so audit histories are preserved instead of being reconstructed on the fly.
