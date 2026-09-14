@@ -54,45 +54,55 @@ Result: this environment currently exits with code 1, so the frontend should be 
 
 ```text
 reconciliation-engine/
+├── .env.example
+├── .gitignore
 ├── backend/
 │   ├── core/
+│   │   ├── __init__.py
 │   │   ├── settings.py
 │   │   ├── urls.py
 │   │   └── wsgi.py
-│   ├── reconciler/
-│   │   ├── management/
-│   │   │   └── commands/
-│   │   │       └── import_data.py
-│   │   ├── migrations/
-│   │   │   └── 0001_initial.py
-│   │   ├── services/
-│   │   │   └── comparator.py
-│   │   ├── tests/
-│   │   │   └── test_comparator.py
-│   │   ├── models.py
-│   │   ├── urls.py
-│   │   └── views.py
+│   ├── data/
+│   │   ├── locations.csv
+│   │   ├── system_a.csv
+│   │   └── system_b.csv
 │   ├── db.sqlite3
 │   ├── manage.py
 │   ├── pytest.ini
-│   └── requirements.txt
-├── data/
-│   ├── locations.csv
-│   ├── system_a.csv
-│   └── system_b.csv
+│   ├── requirements.txt
+│   ├── reconciler/
+│   │   ├── __init__.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── urls.py
+│   │   ├── views.py
+│   │   ├── management/
+│   │   │   ├── __init__.py
+│   │   │   └── commands/
+│   │   │       ├── __init__.py
+│   │   │       └── import_data.py
+│   │   ├── migrations/
+│   │   │   ├── __init__.py
+│   │   │   └── 0001_initial.py
+│   │   ├── services/
+│   │   │   ├── __init__.py
+│   │   │   └── comparator.py
+│   │   └── tests/
+│   │       └── test_comparator.py
 ├── frontend/
-│   ├── src/
-│   │   ├── api.js
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   ├── styles.css
-│   │   └── components/
-│   │       ├── DiscrepancyTable.jsx
-│   │       ├── FilterBar.jsx
-│   │       └── StatCard.jsx
 │   ├── index.html
 │   ├── package.json
-│   └── vite.config.js
+│   ├── package-lock.json
+│   ├── vite.config.js
+│   └── src/
+│       ├── api.js
+│       ├── App.jsx
+│       ├── main.jsx
+│       ├── styles.css
+│       └── components/
+│           ├── DiscrepancyTable.jsx
+│           ├── FilterBar.jsx
+│           └── StatCard.jsx
 ├── DECISIONS.md
 ├── README.md
 └── scripts_verify.py

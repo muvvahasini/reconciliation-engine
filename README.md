@@ -50,49 +50,63 @@ npm run dev
 
 Result: this environment currently exits with code 1, so the frontend should be started only after local dependencies are installed and the environment is confirmed.
 
+**Deployed on Vercel** — frontend and backend are both published. Ensure `VITE_API_BASE_URL` in the frontend Vercel project points to your backend Vercel URL (Settings → Environment Variables).
+
 ## Project structure
 
 ```text
 reconciliation-engine/
+├── .env.example
+├── .gitignore
 ├── backend/
 │   ├── core/
+│   │   ├── __init__.py
 │   │   ├── settings.py
 │   │   ├── urls.py
 │   │   └── wsgi.py
-│   ├── reconciler/
-│   │   ├── management/
-│   │   │   └── commands/
-│   │   │       └── import_data.py
-│   │   ├── migrations/
-│   │   │   └── 0001_initial.py
-│   │   ├── services/
-│   │   │   └── comparator.py
-│   │   ├── tests/
-│   │   │   └── test_comparator.py
-│   │   ├── models.py
-│   │   ├── urls.py
-│   │   └── views.py
+│   ├── data/
+│   │   ├── locations.csv
+│   │   ├── system_a.csv
+│   │   └── system_b.csv
 │   ├── db.sqlite3
 │   ├── manage.py
 │   ├── pytest.ini
-│   └── requirements.txt
-├── data/
-│   ├── locations.csv
-│   ├── system_a.csv
-│   └── system_b.csv
+│   ├── requirements.txt
+│   ├── Procfile
+│   ├── runtime.txt
+│   ├── reconciler/
+│   │   ├── __init__.py
+│   │   ├── apps.py
+│   │   ├── models.py
+│   │   ├── urls.py
+│   │   ├── views.py
+│   │   ├── management/
+│   │   │   ├── __init__.py
+│   │   │   └── commands/
+│   │   │       ├── __init__.py
+│   │   │       └── import_data.py
+│   │   ├── migrations/
+│   │   │   ├── __init__.py
+│   │   │   └── 0001_initial.py
+│   │   ├── services/
+│   │   │   ├── __init__.py
+│   │   │   └── comparator.py
+│   │   └── tests/
+│   │       └── test_comparator.py
 ├── frontend/
-│   ├── src/
-│   │   ├── api.js
-│   │   ├── App.jsx
-│   │   ├── main.jsx
-│   │   ├── styles.css
-│   │   └── components/
-│   │       ├── DiscrepancyTable.jsx
-│   │       ├── FilterBar.jsx
-│   │       └── StatCard.jsx
 │   ├── index.html
 │   ├── package.json
-│   └── vite.config.js
+│   ├── package-lock.json
+│   ├── vite.config.js
+│   └── src/
+│       ├── api.js
+│       ├── App.jsx
+│       ├── main.jsx
+│       ├── styles.css
+│       └── components/
+│           ├── DiscrepancyTable.jsx
+│           ├── FilterBar.jsx
+│           └── StatCard.jsx
 ├── DECISIONS.md
 ├── README.md
 └── scripts_verify.py
@@ -137,17 +151,32 @@ Start the API:
 python manage.py runserver
 ```
 
-The backend runs on `http://127.0.0.1:8000`.
+The backend runs on `http://127.0.0.1:8000` locally.
 
 ### 2. Frontend
 
 ```bash
 cd reconciliation-engine/frontend
 npm install
+```
+
+Set the API base URL to point to your deployed backend by creating a `.env` file in `reconciliation-engine/frontend/`:
+
+```
+VITE_API_BASE_URL=https://your-backend-on-vercel.app
+```
+
+When deploying to Vercel, also add `VITE_API_BASE_URL` as an environment variable in the Vercel project settings (Settings → Environment Variables) so it is included in the production build.
+
+During development, the Vite proxy (`/api → http://127.0.0.1:8000`) handles API requests automatically, so `VITE_API_BASE_URL` is not needed locally.
+
+Then start the dev server:
+
+```bash
 npm run dev
 ```
 
-The Vite app usually runs on `http://127.0.0.1:5173`.
+The Vite app usually runs on `http://127.0.0.1:5173`. During development, the Vite proxy (`/api → http://127.0.0.1:8000`) handles API requests automatically, so `VITE_API_BASE_URL` is not needed locally unless the backend is on a different machine.
 
 ### 3. Tests
 
@@ -184,6 +213,8 @@ Notes:
 - `reason` accepts `ALL`, `MISSING_IN_SYSTEM_B`, `ORPHAN_IN_SYSTEM_B`, `DUPLICATE_IN_SYSTEM_B`, or `VALUE_MISMATCH`.
 - `sort` accepts `asc` or `desc`.
 - Results are filtered by organization before being serialized.
+- In production, prepend `VITE_API_BASE_URL` (e.g., `https://your-deployed-backend.com`) to all endpoint paths.
+- If the frontend and backend are on different domains, set `CORS_ALLOW_ALL=true` as an environment variable on the backend (enabled by default).
 
 ## Reconciliation logic
 
